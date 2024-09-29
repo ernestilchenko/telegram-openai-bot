@@ -46,7 +46,7 @@ async def generate_vision_url(model: str, text: str, url: str) -> str:
             max_tokens=300,
         )
 
-        return response.choices[0].message.content
+        return response.choices[0]
     except openai.OpenAIError as e:
         return f"Error: {str(e)}"
 
@@ -112,6 +112,7 @@ async def generate_vision_file(model: str, text: str, file_path: str) -> str:
             async with session.post("https://api.openai.com/v1/chat/completions", headers=headers,
                                     json=payload) as response:
                 response_json = await response.json()
+                print(response_json)
                 return response_json['choices'][0]['message']['content']
     except openai.OpenAIError as e:
         return f"Error: {str(e)}"
@@ -146,7 +147,7 @@ async def gpt_4_vision_preview(call: types.CallbackQuery, l10n: FluentLocalizati
     # Inline keyboard markup for the option selection
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
     await call.message.edit_text(text=l10n.format_value("text_select"), reply_markup=keyboard)
-    await state.update_data(model="gpt-4-vision-preview")
+    await state.update_data(model="gpt-4o-mini")
 
 
 # Handler for the "upload" callback query
@@ -197,12 +198,10 @@ async def vision_text(msg: types.Message, l10n: FluentLocalization, state: FSMCo
     data = await state.get_data()
     mesg = await msg.answer(text=l10n.format_value("text_wait"))
     res = await generate_vision_file(model=data["model"], file_path=data["file_name"], text=prompt)
-    if res.startswith("Error:"):
-        await msg.answer(text=res)
-    else:
-        await mesg.delete()
-        await msg.bot.send_message(chat_id=msg.from_user.id, text=res)
-        await aiofiles.os.remove(data["file_name"])
+
+    await mesg.delete()
+    await msg.bot.send_message(chat_id=msg.from_user.id, text=res)
+    await aiofiles.os.remove(data["file_name"])
 
 
 # Handler for the message in the "vision_url" state
@@ -228,8 +227,5 @@ async def vision_text(msg: types.Message, l10n: FluentLocalization, state: FSMCo
     data = await state.get_data()
     mesg = await msg.answer(text=l10n.format_value("text_wait"))
     res = await generate_vision_url(model=data["model"], url=data["url"], text=prompt)
-    if res.startswith("Error:"):
-        await msg.answer(text=res)
-    else:
-        await mesg.delete()
-        await msg.bot.send_message(chat_id=msg.from_user.id, text=res)
+    await mesg.delete()
+    await msg.bot.send_message(chat_id=msg.from_user.id, text=res)
